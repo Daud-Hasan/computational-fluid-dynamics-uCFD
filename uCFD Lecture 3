@@ -1,0 +1,54 @@
+#Example 1: Steady State Heat Conduction in 1D
+
+In this example, we solve the following steady state equation:
+\begin{equation}
+\frac{\mathrm{d}^2 T}{\mathrm{d}x^2} = H(T-T_\infty)
+\end{equation}
+
+Here, $H = \frac{hP}{kA_c}$
+where,  
+$h$ = Convection heat transfer coefficient  
+$P$ = Perimeter of the rod  
+$k$ = Thermal conductivity of the rod  
+$A_c$ = Cross-sectional area of the rod
+
+import numpy as np
+%matplotlib inline
+%config InlineBackend.figure_format = 'svg'
+import matplotlib.pyplot as plt
+
+# setup some definitions for our problems
+L = 1.0 # m, length of the rod
+n = 101
+# let's define the x-axis or the abs
+x = np.linspace(0,L,n)
+dx = x[1]-x[0]
+H = 1
+Tleft = 200 # K
+Tright = 300 # K
+Tinf = 500
+
+# build the three diagonals
+# upper diagonal
+ud = np.ones(n-1)
+ud[0] = 0.0
+
+# lower diagonal
+ld = np.ones(n-1)
+ld[-1] = 0.0
+
+# main diagonal
+md = -(2.0 + H*dx*dx)*np.ones(n)
+md[0] = 1.0
+md[-1] = 1.0
+
+# let's build the full coefficient matrix
+A = np.diag(ld,-1) + np.diag(md,0) + np.diag(ud,1)
+
+rhs = -H*dx*dx*Tinf*np.ones(n)
+rhs[0] = Tleft
+rhs[-1] = Tright
+
+sol = np.linalg.solve(A,rhs)
+plt.plot(x, sol)
+plt.grid()
