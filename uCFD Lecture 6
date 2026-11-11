@@ -5,108 +5,93 @@ We solve:
 \end{equation}
 
 import numpy as np
-%matplotlib inline
-%config InlineBackend.figure_format = 'svg'
 import matplotlib.pyplot as plt
-
 import matplotlib.animation as animation
-plt.rcParams['animation.html'] = 'jshtml'
 from matplotlib import cm
 
+# Grid setup
 nx = 33
 ny = 33
 Lx = 1.0
 Ly = 1.0
-# create coordinate
-x = np.linspace(0,Lx,nx)
+
+x = np.linspace(0, Lx, nx)
 dx = x[1] - x[0]
 
-y = np.linspace(0,Ly,ny)
+y = np.linspace(0, Ly, ny)
 dy = y[1] - y[0]
 
-#create the 2D grid
-xx,yy = np.meshgrid(x,y)
+xx, yy = np.meshgrid(x, y)
 
-plt.imshow(xx)
-
-# define initial condition
-wx = 2.0*np.pi
-wy = 2.0*np.pi
-u0 = lambda x,y: np.sin(wx*x)*np.sin(wy*y)
-plt.contourf(xx,yy,u0(xx,yy))
-plt.colorbar()
+# Initial condition
+wx = 2.0 * np.pi
+wy = 2.0 * np.pi
+u0 = lambda x, y: np.sin(wx * x) * np.sin(wy * y)
 
 U = 1.0
 V = 1.0
 
-# stability conditions:
-# sum(courant numbers)<= 1
-dt = 1.0/(abs(U)/dx +abs(V)/dy)
-dt*=0.95
+# Stability condition (CFL)
+dt = 0.95 / (abs(U) / dx + abs(V) / dy)
 
 t = 0.0
 tend = 2.0
 
-Crx = U * dt/dx
-Cry = V * dt/dy
+Crx = U * dt / dx
+Cry = V * dt / dy
 
-# setup the solution arrays
+# Setup solution array with ghost cells
 sol = []
 u = np.zeros([ny + 2, nx + 2])
-u[1:-1,1:-1] = u0(xx,yy)
+u[1:-1, 1:-1] = u0(xx, yy)
 
-# set periodic conditions on the initial condition
-# in 1D
-# u[0] = u[-3]
-# u[-1] = u[2]
-# left face or x-minus face
-u[:,0] = u[:,-3]
-# right face or x-plus face
-u[:,-1] = u[:,2]
-
-# y-minus face (bottom)
-u[0,:] = u[-3,:]
-# y-plus face(top face)
-u[-1,:] = u[2,:]
+# Set initial periodic boundary conditions
+u[:, 0] = u[:, -3]
+u[:, -1] = u[:, 2]
+u[0, :] = u[-3, :]
+u[-1, :] = u[2, :]
 sol.append(u)
 
-plt.imshow(u)
-
-# time advance loop
+# Time advancement loop
 while t < tend:
     un = sol[-1]
     unew = un.copy()
-    unew[1:-1,1:-1] = un[1:-1,1:-1] - Crx * (un[1:-1,1:-1] - un[1:-1, :-2]) - Cry * (un[1:-1,1:-1] - un[:-2, 1:-1]) 
-    # set periodic conditions on the initial condition
-    # left face or x-minus face
-    unew[:,0] = unew[:,-3]
-    # right face or x-plus face
-    unew[:,-1] = unew[:,2]
-    # y-minus face (bottom)
-    unew[0,:] = unew[-3,:]
-    # y-plus face(top face)
-    unew[-1,:] = unew[2,:]
+    
+    # Upwind spatial discretization for U > 0 and V > 0
+    unew[1:-1, 1:-1] = (
+        un[1:-1, 1:-1]
+        - Crx * (un[1:-1, 1:-1] - un[1:-1, :-2])
+        - Cry * (un[1:-1, 1:-1] - un[:-2, 1:-1])
+    )
+    
+    # Update periodic boundary conditions
+    unew[:, 0] = unew[:, -3]
+    unew[:, -1] = unew[:, 2]
+    unew[0, :] = unew[-3, :]
+    unew[-1, :] = unew[2, :]
+    
     sol.append(unew)
     t += dt
 
-from matplotlib import animation
+# Define contour levels explicitly
+levs = np.linspace(-1.0, 1.0, 50)
 
 fig, ax = plt.subplots()
 
 def animate(i):
     ax.clear()
-
-    ax.contourf(
+    cont = ax.contourf(
         xx, yy,
-        sol[i][1:-1,1:-1],
+        sol[i][1:-1, 1:-1],
         cmap=cm.inferno,
         levels=levs,
         vmax=1.0,
         vmin=-1.0
     )
-
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
+    ax.set_title(f"Time: {i * dt:.2f} s")
+    return cont
 
 ani = animation.FuncAnimation(
     fig,
@@ -116,5 +101,6 @@ ani = animation.FuncAnimation(
     blit=False,
     repeat_delay=1000
 )
+
 
 ani
